@@ -167,7 +167,7 @@ function Stubuau.GenerateStub(base: string, script: string, file: string): strin
 	assert(retStat and retStat.kind == "return", "Expected return statement: " .. file)
 
 	local ret = retStat.exprs[1]
-	assert(ret, "Expected return value")
+	assert(ret, "Expected return value: " .. file)
 
 	if ret.kind == "assertion" then
 		return assertionStub(base, ret, block.stats, script)
@@ -176,7 +176,22 @@ function Stubuau.GenerateStub(base: string, script: string, file: string): strin
 	assert(ret.kind == "var", "Only variables are supported for return: " .. file)
 	assert(ret.var.root.kind == "name", "Only direct variables are supported for return: " .. file)
 
-	local name do
+	local name: string
+
+	if getText(script, ret.var.root.span) == "table" then
+		local member = ret.var.suffixes[1]
+		if member then
+			assert(member.kind == "name" and getText(script, member.span) == ".freeze", "Unsupported table operation: " .. file)
+
+			local call = ret.var.suffixes[2]
+			assert(call and call.kind == "call", "Unsupported table operation: " .. file)
+
+			local arg = call.args[1]
+			assert(arg and arg.kind == "var", "Unsupported table operation: " .. file)
+
+			name = getText(script, arg.span)
+		end
+	else
 		local span = ret.var.root.span
 		name = getText(script, span)
 	end
